@@ -1,20 +1,59 @@
-/* app/globals.css — Giftia 検索画面の見た目（配布。穴埋めの対象ではない） */
-:root { --ink:#1f2933; --sub:#616e7c; --line:#e4e7eb; --accent:#1b3a5c; --bg:#fafaf9; }
+/* app/globals.css — Giftia 検索画面の見た目（案①：グレーの濃淡＋ボルドー1色、メイリオ、角を立てる） */
+/* 色：グレーの濃淡＋ボルドー1色。ボルドーは「選んだもの」と「必須」にだけ使う（案①） */
+:root { --ink:#222; --sub:#5c5c5c; --line:#e0e0e0; --accent:#8a2f3c; --bg:#ffffff; }
 * { box-sizing: border-box; }
-body { margin:0; font-family:"Hiragino Sans","Yu Gothic","Meiryo",sans-serif; color:var(--ink); background:var(--bg); }
-.page { max-width:960px; margin:0 auto; padding:16px; }
-.header h1 { font-size:24px; color:var(--accent); margin:8px 0; }
-.modes { display:flex; gap:8px; margin-top:4px; }
-.modes button { font-size:14px; padding:6px 12px; border:1px solid var(--line); background:#fff; border-radius:999px; cursor:pointer; }
-.modes button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+/* フォント：メイリオ（Mac などメイリオがない環境では、ヒラギノ角ゴ・游ゴシックの順に使う） */
+body { margin:0; font-family:"Meiryo","メイリオ","Hiragino Sans","Yu Gothic",sans-serif; color:var(--ink); background:var(--bg); letter-spacing:.02em; }
+.page { max-width:1160px; margin:0 auto; padding:16px; }
+.header h1 { font-size:26px; color:var(--ink); letter-spacing:.06em; margin:8px 0; }
 .summary { color:var(--sub); font-size:14px; }
-.form { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
-.form .q { flex:1 1 240px; }
-.form input, .form select, .form button { font-size:15px; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; }
-.form .chk { display:flex; align-items:center; gap:4px; font-size:14px; }
-.form button[type="submit"] { background:var(--accent); color:#fff; border:none; min-width:88px; cursor:pointer; }
-.grid { display:grid; gap:12px; }
-.card { border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:#fff; }
+
+/* ===== 候補一覧とカード ===== */
+/* 候補一覧：1枚220px以上のカードを、画面に入るだけ横に並べる（案①） */
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px; }
+/* カード：箱で囲まず、上の線と余白で区切る（案①） */
+.card { border:0; border-top:1px solid var(--line); border-radius:0; padding:12px 0 0; background:none; }
 .card .name { font-size:16px; margin:4px 0; }
 .card .price { font-size:18px; font-weight:700; margin:4px 0; }
 .card .meta { color:var(--sub); font-size:13px; margin:2px 0; }
+/* 商品画像（FR-13）：最大240pxの正方形にそろえ、はみ出たところは切る */
+.card .thumb { display:block; width:100%; max-width:240px; aspect-ratio:1/1; object-fit:cover; border-radius:2px; margin-bottom:8px; background:#eee; }
+/* 画像がない商品（FR-13）：同じ大きさの枠の真ん中に、薄い文字で「NO IMAGE」と出す */
+.card .noimg { display:flex; align-items:center; justify-content:center; color:#9a9a9a; font-size:12px; letter-spacing:.15em; }
+/* 「〇つの条件に一致」：薄い小さな文字 */
+.card .match { color:var(--sub); font-size:12px; margin:2px 0; }
+/* カードのタグ（FR-11）：グレーの小さな札。合っているものだけボルドーの太字＋下線（案①） */
+.tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+.tag { font-size:11px; padding:1px 6px; background:#f3f3f3; color:var(--sub); border-radius:2px; }
+.tag.hit { background:none; color:var(--accent); font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+
+/* ===== 案①：サイドバーと結果の並び、ボタンの形 ===== */
+/* 見出しと説明文 */
+.title { font-size:22px; margin:8px 0 4px; }
+.lead { color:var(--sub); font-size:14px; margin:0 0 16px; }
+/* 左にサイドバー（幅280px）、右に結果。画面が狭い（スマホ）ときは縦に積む */
+.layout { display:grid; grid-template-columns:280px minmax(0,1fr); gap:24px; align-items:start; }
+@media (max-width:760px) { .layout { grid-template-columns:1fr; } }
+/* サイドバー：薄いグレーの面。中の部品は縦に並べる */
+.side { background:#f3f3f3; padding:16px; display:flex; flex-direction:column; gap:8px; }
+.side h3 { font-size:16px; margin:0 0 4px; }
+.side h4 { font-size:14px; margin:12px 0 0; padding-top:12px; border-top:1px solid var(--line); }
+.side input, .side select { font-size:15px; padding:8px 10px; border:1px solid var(--line); border-radius:2px; background:#fff; width:100%; }
+.lbl { font-size:13px; font-weight:700; margin:8px 0 0; }
+.req { color:var(--accent); border:1px solid var(--accent); font-size:10px; padding:0 4px; margin-left:4px; font-weight:400; }
+.opt { color:var(--sub); border:1px solid var(--line); font-size:10px; padding:0 4px; margin-left:4px; font-weight:400; }
+.yen { display:flex; align-items:center; gap:6px; font-size:14px; white-space:nowrap; }
+/* 選択肢のボタン：グレーで角を立てる。選んだらアクセント色 */
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { font-size:13px; padding:4px 10px; border:1px solid #e2e2e2; background:#e2e2e2; color:#3a3a3a; border-radius:2px; cursor:pointer; }
+.chip.on { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+/* 3つ選んだあとのテイストなど、押せないボタンは薄くする */
+.chip:disabled { opacity:.4; cursor:not-allowed; }
+.def { font-size:12px; color:var(--sub); margin:0; }
+.go { margin-top:12px; padding:12px; background:#3a3a3a; color:#fff; border:0; border-radius:2px; font-size:15px; font-weight:700; cursor:pointer; }
+/* 選んでいる条件：外せるものだけ丸くする（案①）。予算は外せないので線を薄く */
+.cond { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px; }
+.cchip { font-size:13px; padding:4px 12px; border:1px solid var(--ink); border-radius:999px; background:#fff; cursor:pointer; }
+span.cchip { cursor:default; border-color:var(--line); }
+/* 予算×1.2の文：10位の下に、上下の線で区切って出す */
+.wide { margin-top:16px; padding:12px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); font-size:15px; }
