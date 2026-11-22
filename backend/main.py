@@ -8,6 +8,7 @@
 #   /api/masters … FR-01（条件パネルの選択肢）
 
 import os
+from typing import Optional
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -38,7 +39,7 @@ def health():
 
 @app.get("/api/search")
 def search(
-    budget: int = Query(..., ge=1, description="予算（必須）。price <= budget"),
+    budget: Optional[int] = Query(default=None, ge=1, description="予算（任意）。入れたときだけ price <= budget"),
     look: str = Query(default="", description="見た目の系統IDを1つ（V01〜V06）"),
     use: str = Query(default="", description="使い方の系統IDを1つ（F01〜F07）"),
     category_id: str = Query(default="", description="カテゴリーIDを1つ（C01〜C10）"),
@@ -46,7 +47,7 @@ def search(
     q: str = Query(default="", description="キーワード（空白区切りで複数。すべてを含む商品）"),
     limit: int = Query(default=10, ge=1, le=100, description="返す件数"),
 ):
-    """誕生日タグ・予算以下・在庫ありの商品から、条件に合う上位 limit 件と件数を返す"""
+    """誕生日タグ・在庫あり（予算を入れたときは予算以下）の商品から、条件に合う上位 limit 件と件数を返す"""
     groups = [g for g in (look, use) if g]                       # 選んだ系統（見た目・使い方）
     taste_ids = [t.strip() for t in tastes.split(",") if t.strip()]  # 選んだテイスト
     if len(taste_ids) > MAX_TASTES:
@@ -94,9 +95,13 @@ def search(
         keep = "WHERE x.match_count > 0" if parts else ""
         return f"FROM ({inner}) x {keep}"
 
-    in_budget = base("p.price <= %s")
-    p_in = (*mparams, *wparams, budget)
-    wide_budget = budget * 12 // 10  # 予算×1.2（小数は切り捨て）
+    # 予算は任意（11/22 MTGで決定）。入れたときだけ金額で絞る
+    if budget is None:
+        in_budget = base("1 = 1")  # 予算なし＝金額で絞らない（1 = 1 は「いつも正しい」条件）
+        p_in = (*mparams, *wparams)
+    else:
+        in_budget = base("p.price <= %s")
+        p_in = (*mparams, *wparams, budget)
 
     # DBへの接続は1回だけ作って、5本のSQLを続けて流す（毎回つなぐと遅いため）
     conn = get_connection()
@@ -114,12 +119,15 @@ def search(
             )
             rows = cur.fetchall()
 
-            # FR-12：予算を×1.2にすると増える件数（budget < price <= wide_budget）
-            cur.execute(
-                f"SELECT COUNT(*) AS n {base('p.price > %s AND p.price <= %s')}",
-                (*mparams, *wparams, budget, wide_budget),
-            )
-            added = cur.fetchone()["n"]
+            # FR-12：予算を×1.2にすると増える件数（budget < price <= wide_budget）。予算なしなら数えない
+            widen = None
+            if budget is not None:
+                wide_budget = budget * 12 // 10  # 予算×1.2（小数は切り捨て）
+                cur.execute(
+                    f"SELECT COUNT(*) AS n {base('p.price > %s AND p.price <= %s')}",
+                    (*mparams, *wparams, budget, wide_budget),
+                )
+                widen = {"budget": wide_budget, "added": cur.fetchone()["n"]}
 
             # FR-11：上位の商品に付いている系統・テイストをまとめて取る（0件なら流さない）
             tags_g, tags_t = {}, {}
@@ -163,7 +171,7 @@ def search(
 
     return {
         "total": total,
-        "widen": {"budget": wide_budget, "added": added},
+        "widen": widen,  # 予算なしなら null
         "results": results,
     }
 

@@ -14,7 +14,7 @@ import { CATEGORIES, LOOKS, USAGES } from "@/lib/masters";
 export default function Home() {
   // ① 状態（変化するデータ）を覚える箱
   const [keyword, setKeyword] = useState("");                       // キーワード（任意）
-  const [budget, setBudget] = useState("");                         // 予算（入力欄の文字のまま持つ。必須）
+  const [budget, setBudget] = useState("");                         // 予算（入力欄の文字のまま持つ。任意）
   const [look, setLook] = useState("");                             // 見た目の系統ID（V01〜V06。空＝選んでいない）
   const [usage, setUsage] = useState("");                           // 使い方の系統ID（F01〜F07。空＝選んでいない）
   const [categoryId, setCategoryId] = useState("");                 // カテゴリーID（C01〜C10。空＝すべて）
@@ -32,12 +32,13 @@ export default function Home() {
   // ② 検索の処理（FR-03）：条件をAPIに送り、結果を result に入れる
   // next には「今変えた条件」だけを渡す。✕で条件を外したとき、外したあとの条件ですぐ検索し直すため（FR-04）
   async function runBirthdaySearch(
-    next: { keyword?: string; look?: string; usage?: string; categoryId?: string; tastes?: string[] } = {},
+    next: { keyword?: string; budget?: string; look?: string; usage?: string; categoryId?: string; tastes?: string[] } = {},
   ) {
-    const c = { keyword, look, usage, categoryId, tastes, ...next }; // 今の条件に、変えた分だけ上書きする
-    const yen = Number(budget);
-    if (!Number.isInteger(yen) || yen <= 0) { // 予算は必須。1円以上の整数だけ通す（FR-01）
-      setError("予算を入力してください（例：5000）");
+    const c = { keyword, budget, look, usage, categoryId, tastes, ...next }; // 今の条件に、変えた分だけ上書きする
+    // 予算は任意（11/22 MTGで決定）。空なら金額で絞らない。入れたときは1円以上の整数だけ通す（FR-01）
+    const yen = c.budget.trim() === "" ? null : Number(c.budget);
+    if (yen !== null && (!Number.isInteger(yen) || yen <= 0)) {
+      setError("予算は1円以上の数字で入力してください（例：5000）");
       return;
     }
     setError("");
@@ -74,8 +75,8 @@ export default function Home() {
             <option value="誕生日">誕生日</option>
           </select>
 
-          {/* 予算：必須（FR-01） */}
-          <label className="lbl">予算 <span className="req">必須</span></label>
+          {/* 予算：任意（FR-01） */}
+          <label className="lbl">予算 <span className="opt">任意</span></label>
           <div className="yen">
             <input inputMode="numeric" value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="5000" /> 円まで
           </div>
@@ -145,10 +146,13 @@ export default function Home() {
 
         {/* 検索結果：件数と上位10件（FR-03） */}
         <section className="res">
-          {/* 選んでいる条件（FR-04）：✕で外すと、検索ボタンなしですぐ検索し直す。予算は必須なので外せない */}
+          {/* 選んでいる条件（FR-04）：✕で外すと、検索ボタンなしですぐ検索し直す。予算も✕で外せる */}
           {result && (
             <div className="cond">
-              <span className="cchip">{budget}円まで</span>
+              {budget.trim() && (
+                <button type="button" className="cchip" onClick={() => { setBudget(""); runBirthdaySearch({ budget: "" }); }}>
+                  {budget}円まで ✕</button>
+              )}
               {keyword && (
                 <button type="button" className="cchip" onClick={() => { setKeyword(""); runBirthdaySearch({ keyword: "" }); }}>
                   「{keyword}」 ✕</button>
