@@ -25,7 +25,7 @@ const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 // 画面から渡す検索条件（FR-01）
 export type BirthdayCondition = {
   keyword: string;    // キーワード（空なら送らない）
-  budget: number;     // 予算（必須）
+  budget: number | null; // 予算（任意。null なら送らない）
   look: string;       // 見た目の系統ID（V01〜V06。空なら送らない）
   use: string;        // 使い方の系統ID（F01〜F07。空なら送らない）
   categoryId: string; // カテゴリーID（C01〜C10。空なら送らない）
@@ -35,15 +35,14 @@ export type BirthdayCondition = {
 // APIから届く結果（FR-03・FR-12）
 export type SearchResult = {
   total: number;                             // 条件に合う件数
-  widen?: { budget: number; added: number }; // 予算×1.2で増える件数（今のAPIは返さない）
+  widen?: { budget: number; added: number } | null; // 予算×1.2で増える件数（予算を入れたときだけ返る）
   results: Gift[];                           // 上位10件
 };
 
 // 条件をAPIに送り、結果をもらう。空の条件は送らない
 export async function searchBirthdayGifts(c: BirthdayCondition): Promise<SearchResult> {
   const params = new URLSearchParams();
-  params.set("budget", String(c.budget));
-  params.set("price_max", String(c.budget)); // 今のAPI用（新しいAPIができたら消す）
+  if (c.budget !== null) params.set("budget", String(c.budget));
   if (c.keyword) params.set("q", c.keyword);
   if (c.look) params.set("look", c.look);
   if (c.use) params.set("use", c.use);
