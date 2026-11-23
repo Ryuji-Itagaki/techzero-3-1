@@ -55,5 +55,16 @@ body { margin:0; font-family:"Meiryo","メイリオ","Hiragino Sans","Yu Gothic"
 .cond { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:8px; }
 .cchip { font-size:13px; padding:4px 12px; border:1px solid var(--ink); border-radius:999px; background:#fff; cursor:pointer; }
 span.cchip { cursor:default; border-color:var(--line); }
-/* 予算×1.2の文：10位の下に、上下の線で区切って出す */
-.wide { margin-top:16px; padding:12px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); font-size:15px; }
+/* 11/23 MTG：件数と予算×1.2を横に並べる行。狭い画面では折り返す */
+.sumrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; margin:0 0 12px; }
+.sumrow .summary { margin:0; }
+/* 11/23 MTG：予算×1.2の文とボタン（以前は10位の下に、上下の線で区切った文だけ） */
+.wide { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-size:14px; }
+/* 11/23 MTG：予算を広げるボタン。「選んだもの」ではないので、ボルドーの線だけにする */
+.widebtn { font-size:13px; padding:4px 12px; border:1px solid var(--accent); background:#fff; color:var(--accent); border-radius:2px; cursor:pointer; font-weight:700; }
+/* 11/23 MTG：ページ送り（前へ／次へ）。結果の下の真ん中に並べる */
+.pager { display:flex; justify-content:center; align-items:center; gap:16px; margin:24px 0 8px; }
+.pg { font-size:14px; padding:8px 16px; border:1px solid var(--ink); background:#fff; border-radius:2px; cursor:pointer; }
+/* 押せないとき（1ページ目の「前へ」、最後のページの「次へ」）は薄くする */
+.pg:disabled { opacity:.35; cursor:not-allowed; }
+.pginfo { font-size:14px; color:var(--sub); }
