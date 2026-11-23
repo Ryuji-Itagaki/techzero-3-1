@@ -45,7 +45,10 @@ def search(
     category_id: str = Query(default="", description="カテゴリーIDを1つ（C01〜C10）"),
     tastes: str = Query(default="", description="テイストIDをカンマ区切りで最大3つ（例 T0608,T0609）"),
     q: str = Query(default="", description="キーワード（空白区切りで複数。すべてを含む商品）"),
-    limit: int = Query(default=10, ge=1, le=100, description="返す件数"),
+    # 11/23 MTG：1ページの件数を10件→20件に変更（画面は limit=20 を送る）
+    limit: int = Query(default=20, ge=1, le=100, description="返す件数（1ページ分）"),
+    # 11/23 MTG：ページ送り（「次へ」）のために追加。何件目から返すか（0＝1件目から、20＝21件目から）
+    offset: int = Query(default=0, ge=0, description="飛ばす件数（ページ送り用。0なら先頭から）"),
 ):
     """誕生日タグ・在庫あり（予算を入れたときは予算以下）の商品から、条件に合う上位 limit 件と件数を返す"""
     groups = [g for g in (look, use) if g]                       # 選んだ系統（見た目・使い方）
@@ -107,15 +110,17 @@ def search(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            # 件数（10件に切る前）
+            # 件数（1ページ分に切る前の、全部の件数。画面の「全○ページ」の計算にも使う）
             cur.execute(f"SELECT COUNT(*) AS n {in_budget}", p_in)
             total = cur.fetchone()["n"]
 
             # 上位 limit 件。並び順：合っている数 → 売れた数 → 商品ID（FR-03）
+            # 11/23 MTG：OFFSET を追加。offset 件を飛ばしてから limit 件を返す（2ページ目は offset=20）
+            # 並び順の最後に商品IDがあるので、ページをまたいでも同じ商品が二重に出ない
             cur.execute(
                 f"SELECT x.* {in_budget} "
-                f"ORDER BY x.match_count DESC, x.sales_count DESC, x.product_id LIMIT %s",
-                (*p_in, limit),
+                f"ORDER BY x.match_count DESC, x.sales_count DESC, x.product_id LIMIT %s OFFSET %s",
+                (*p_in, limit, offset),
             )
             rows = cur.fetchall()
 

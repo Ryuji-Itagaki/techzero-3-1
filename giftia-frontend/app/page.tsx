@@ -7,7 +7,8 @@
 import { useEffect, useState } from "react";
 import ResultCard from "./ResultCard";
 // searchBirthdayGifts・SearchResult：誕生日の検索と、その結果の形。fetchTastes・Taste：テイストの一覧をもらう
-import { searchBirthdayGifts, fetchTastes, type SearchResult, type Taste } from "@/lib/api";
+// 11/23 MTG：PAGE_SIZE（1ページの件数＝20）を追加。順位とページ数の計算に使う
+import { searchBirthdayGifts, fetchTastes, PAGE_SIZE, type SearchResult, type Taste } from "@/lib/api";
 // サイドバーに並べる選択肢（カテゴリー10種・見た目6種・使い方7種）
 import { CATEGORIES, LOOKS, USAGES } from "@/lib/masters";
 
@@ -19,7 +20,8 @@ export default function Home() {
   const [usage, setUsage] = useState("");                           // 使い方の系統ID（F01〜F07。空＝選んでいない）
   const [categoryId, setCategoryId] = useState("");                 // カテゴリーID（C01〜C10。空＝すべて）
   const [tastes, setTastes] = useState<string[]>([]);               // テイストID（最大3つ）
-  const [result, setResult] = useState<SearchResult | null>(null);  // 検索結果（件数・上位10件・×1.2の件数）
+  const [result, setResult] = useState<SearchResult | null>(null);  // 検索結果（件数・そのページの候補・×1.2の件数）
+  const [page, setPage] = useState(1);                              // 11/23 MTG：今表示しているページ（1から）
   const [error, setError] = useState("");                           // 予算の入力エラー・APIにつながらないときの文言
   const [tasteList, setTasteList] = useState<Taste[]>([]);          // テイスト101個の一覧（/api/masters から）
   const [tasteError, setTasteError] = useState(false);              // 一覧を読み込めなかったら true
@@ -32,8 +34,10 @@ export default function Home() {
   // ② 検索の処理（FR-03）：条件をAPIに送り、結果を result に入れる
   // next には「今変えた条件」だけを渡す。✕で条件を外したとき、外したあとの条件ですぐ検索し直すため（FR-04）
   async function runBirthdaySearch(
-    next: { keyword?: string; budget?: string; look?: string; usage?: string; categoryId?: string; tastes?: string[] } = {},
+    next: { keyword?: string; budget?: string; look?: string; usage?: string; categoryId?: string; tastes?: string[]; page?: number } = {},
   ) {
+    // 11/23 MTG：ページを指定しないとき（条件を変えた検索）は、1ページ目に戻す。「前へ／次へ」のときだけ page を渡す
+    const pageNo = next.page ?? 1;
     const c = { keyword, budget, look, usage, categoryId, tastes, ...next }; // 今の条件に、変えた分だけ上書きする
     // 予算は任意（11/22 MTGで決定）。空なら金額で絞らない。入れたときは1円以上の整数だけ通す（FR-01）
     const yen = c.budget.trim() === "" ? null : Number(c.budget);
@@ -46,7 +50,10 @@ export default function Home() {
       setResult(await searchBirthdayGifts({
         keyword: c.keyword, budget: yen, look: c.look, use: c.usage,
         categoryId: c.categoryId, tastes: c.tastes,
+        page: pageNo, // 11/23 MTG：何ページ目を取るか
       }));
+      setPage(pageNo); // 11/23 MTG：結果が届いてから、今のページを覚え直す
+      if (next.page) window.scrollTo({ top: 0, behavior: "smooth" }); // 11/23 MTG：ページを変えたら、結果の先頭が見えるように上へ戻す
     } catch (err) {
       setResult(null);
       setError(`APIにつながりません：${(err as Error).message}`); // 原因はブラウザの Console に出る
@@ -144,7 +151,7 @@ export default function Home() {
           <button type="submit" className="go">この条件で探す</button>
         </form>
 
-        {/* 検索結果：件数と上位10件（FR-03） */}
+        {/* 検索結果：件数と、1ページ20件ずつの候補（FR-03。11/23 MTG：10件→20件、ページ送りを追加） */}
         <section className="res">
           {/* 選んでいる条件（FR-04）：✕で外すと、検索ボタンなしですぐ検索し直す。予算も✕で外せる */}
           {result && (
@@ -180,21 +187,43 @@ export default function Home() {
           {error && <p className="summary">{error}</p>}
           {result && (
             <>
-              <p className="summary">条件に合う候補 {result.total} 件</p>
+              {/* 11/23 MTG：件数の横に、予算×1.2の文とボタンを並べる（以前は10位の下に文だけ） */}
+              <div className="sumrow">
+                <p className="summary">条件に合う候補 {result.total} 件</p>
+                {/* 予算×1.2（FR-12）：予算を入れていて、広げると増えるときだけ出す。0件なら出さない */}
+                {result.widen && result.widen.added > 0 && (
+                  <div className="wide">
+                    <span>{result.widen.budget.toLocaleString()}円まで広げると、候補が{result.widen.added}件増えます</span>
+                    {/* 11/23 MTG：押すと予算欄を広げた金額に書き換え、すぐ検索し直す（1ページ目から） */}
+                    <button type="button" className="widebtn"
+                      onClick={() => { const b = String(result.widen!.budget); setBudget(b); runBirthdaySearch({ budget: b }); }}>
+                      {result.widen.budget.toLocaleString()}円まで広げて探す</button>
+                  </div>
+                )}
+              </div>
               <div className="grid">
                 {/* selected：選んでいる見た目・使い方・テイストのIDを渡す（空のものは除く） */}
-                {result.results.map((g, i) => <ResultCard key={g.id} gift={g} rank={i + 1} selected={[look, usage, ...tastes].filter(Boolean)} />)}
+                {/* 11/23 MTG：順位はページをまたいで続けて数える（2ページ目は21位から） */}
+                {result.results.map((g, i) => <ResultCard key={g.id} gift={g} rank={(page - 1) * PAGE_SIZE + i + 1} selected={[look, usage, ...tastes].filter(Boolean)} />)}
               </div>
+              {/* 11/23 MTG：ページ送り。候補が20件より多いときだけ「前へ／次へ」を出す */}
+              {result.total > PAGE_SIZE && (
+                <div className="pager">
+                  {/* 1ページ目では「前へ」を押せない */}
+                  <button type="button" className="pg" disabled={page <= 1}
+                    onClick={() => runBirthdaySearch({ page: page - 1 })}>← 前へ</button>
+                  {/* 今のページ／全部のページ数（全部の件数を20で割って切り上げ） */}
+                  <span className="pginfo">{page} / {Math.ceil(result.total / PAGE_SIZE)} ページ</span>
+                  {/* 最後のページでは「次へ」を押せない */}
+                  <button type="button" className="pg" disabled={page >= Math.ceil(result.total / PAGE_SIZE)}
+                    onClick={() => runBirthdaySearch({ page: page + 1 })}>次へ →</button>
+                </div>
+              )}
               {/* 0件のとき：白い画面で終わらせず、条件を外すよう案内する */}
               {result.total === 0 && (
                 <p className="summary">条件に合う商品が見つかりませんでした。条件を外すと見つかるかもしれません。</p>
               )}
-              {/* 予算×1.2（FR-12）：10位の下に、増える件数を文字で出す。APIが返さないときや0件のときは出さない */}
-              {result.widen && result.widen.added > 0 && (
-                <p className="wide">
-                  {result.widen.budget.toLocaleString()}円まで広げると、候補が{result.widen.added}件増えます
-                </p>
-              )}
+              {/* 11/23 MTG：予算×1.2の文は、件数の横（上の sumrow）へ移した */}
             </>
           )}
         </section>
