@@ -114,12 +114,12 @@ def search(
             cur.execute(f"SELECT COUNT(*) AS n {in_budget}", p_in)
             total = cur.fetchone()["n"]
 
-            # 上位 limit 件。並び順：合っている数 → 売れた数 → 商品ID（FR-03）
+            # 上位 limit 件。並び順：合っている数 → 売れた数 → 商品IDの大きい順＝登録の新しい順（FR-03、11/23 MTG）
             # 11/23 MTG：OFFSET を追加。offset 件を飛ばしてから limit 件を返す（2ページ目は offset=20）
             # 並び順の最後に商品IDがあるので、ページをまたいでも同じ商品が二重に出ない
             cur.execute(
                 f"SELECT x.* {in_budget} "
-                f"ORDER BY x.match_count DESC, x.sales_count DESC, x.product_id LIMIT %s OFFSET %s",
+                f"ORDER BY x.match_count DESC, x.sales_count DESC, x.product_id DESC LIMIT %s OFFSET %s",
                 (*p_in, limit, offset),
             )
             rows = cur.fetchall()
