@@ -1,0 +1,11 @@
+# Azure Functions に送らないファイル（.gitignore と同じ書き方）
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.env
+.env.example
+*.db
+tests/
+tools/
+requirements-dev.txt
